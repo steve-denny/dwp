@@ -9,4 +9,8 @@ export default class TicketService {
   purchaseTickets(accountId, ...ticketTypeRequests) {
     // throws InvalidPurchaseException
   }
+
+  private isAccountValid(accountId){
+    return accountId > 0
+  }
 }
