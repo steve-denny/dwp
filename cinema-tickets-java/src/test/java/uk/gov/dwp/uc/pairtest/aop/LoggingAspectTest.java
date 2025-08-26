@@ -5,6 +5,8 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.Signature;
 import org.junit.jupiter.api.Test;
 import java.lang.reflect.Field;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 /**
@@ -21,6 +23,31 @@ import static org.mockito.Mockito.*;
  * Copyright: (c) 2025, UK Government
  */
 public class LoggingAspectTest {
+    @Test
+    void testFullModeLogsEntryAndExit() throws Throwable {
+        ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
+        Signature signature = mock(Signature.class);
+        when(signature.toShortString()).thenReturn("myTestMethod()");
+        when(joinPoint.getSignature()).thenReturn(signature);
+        // Simulates normal execution
+        when(joinPoint.proceed()).thenReturn(null);
+
+        LoggingAspect aspect = new LoggingAspect("FULL");
+        aspect.logServiceExecution(joinPoint);
+    }
+
+    @Test
+    void testExceptionIsLoggedAndRethrown() throws Throwable {
+        ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
+        Signature signature = mock(Signature.class);
+        when(signature.toShortString()).thenReturn("myErrorMethod()");
+        when(joinPoint.getSignature()).thenReturn(signature);
+        // Simulate exception thrown from method
+        when(joinPoint.proceed()).thenThrow(new RuntimeException("simulated error"));
+
+        LoggingAspect aspect = new LoggingAspect("FULL");
+        assertThrows(RuntimeException.class, () -> aspect.logServiceExecution(joinPoint));
+    }
     @Test
     void testConstructorWithValue() {
         LoggingAspect aspect = new LoggingAspect("PERF_ONLY");

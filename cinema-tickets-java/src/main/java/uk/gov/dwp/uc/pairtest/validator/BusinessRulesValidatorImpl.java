@@ -2,7 +2,7 @@
  * Jesus BusinessRulesValidatorImpl.java
  * Implementation of core cinema ticket purchase validations according to defined business rules.
  */
-package uk.gov.dwp.uc.pairtest.service.validator;
+package uk.gov.dwp.uc.pairtest.validator;
 
 import java.util.Arrays;
 import java.util.Map;

@@ -8,9 +8,9 @@ import thirdparty.paymentgateway.TicketPaymentService;
 import thirdparty.seatbooking.SeatReservationService;
 import uk.gov.dwp.uc.pairtest.domain.TicketTypeRequest;
 import uk.gov.dwp.uc.pairtest.exception.InvalidPurchaseException;
-import uk.gov.dwp.uc.pairtest.service.validator.BusinessRulesValidator;
-import uk.gov.dwp.uc.pairtest.service.validator.BusinessRulesValidatorImpl;
 import uk.gov.dwp.uc.pairtest.util.SpringContextHolder;
+import uk.gov.dwp.uc.pairtest.validator.BusinessRulesValidator;
+import uk.gov.dwp.uc.pairtest.validator.BusinessRulesValidatorImpl;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,7 +31,7 @@ import static org.mockito.Mockito.*;
  *
  * Copyright: (c) 2025, UK Government
  */
-class TicketServiceImplTest {
+public class TicketServiceImplTest {
     TicketServiceImpl service;
 
     // Mocks for dependencies

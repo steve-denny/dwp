@@ -1,5 +1,5 @@
 
-package uk.gov.dwp.uc.pairtest;
+package uk.gov.dwp.uc.pairtest.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -12,6 +12,7 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import thirdparty.seatbooking.SeatReservationService;
+import uk.gov.dwp.uc.pairtest.TicketServiceImpl;
 import uk.gov.dwp.uc.pairtest.exception.InvalidPurchaseException;
 import uk.gov.dwp.uc.pairtest.util.SpringContextHolder;
 

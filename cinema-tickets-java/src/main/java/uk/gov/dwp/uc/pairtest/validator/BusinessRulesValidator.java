@@ -11,7 +11,7 @@
  *
  * Copyright: (c) 2025, UK Government
  */
-package uk.gov.dwp.uc.pairtest.service.validator;
+package uk.gov.dwp.uc.pairtest.validator;
 
 import uk.gov.dwp.uc.pairtest.domain.TicketTypeRequest;
 import uk.gov.dwp.uc.pairtest.exception.InvalidPurchaseException;
