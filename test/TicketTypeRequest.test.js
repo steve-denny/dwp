@@ -1,17 +1,28 @@
 import TicketTypeRequest from '../src/pairtest/lib/TicketTypeRequest.js';
+import { TICKET_TYPES, ERROR_MESSAGES } from '../src/pairtest/constants/TicketConstants.js';
 
 describe('TicketTypeRequest', () => {
-    test.each(['INVALID', 'ADULT', 'CHILD', 'INFANT'])('should throw an error if the type is invalid', (type) => {
-        expect(() => new TicketTypeRequest(type, 1)).toThrow('Invalid ticket type');
+    test('throws when type is invalid', () => {
+        expect(() => new TicketTypeRequest('INVALID', 1)).toThrow(ERROR_MESSAGES.INVALID_TICKET_TYPE);
     });
 
-    test.each([1.5, '1.5'])('should throw an error if the number of tickets is not an integer', (noOfTickets) => {
-        expect(() => new TicketTypeRequest('ADULT', noOfTickets)).toThrow('Invalid number of tickets');
+    test.each([1.5, '1.5', NaN, Infinity, -1, 0])('throws when noOfTickets is invalid: %p', (noOfTickets) => {
+        expect(() => new TicketTypeRequest(TICKET_TYPES.ADULT, noOfTickets)).toThrow(ERROR_MESSAGES.INVALID_TICKET_COUNT);
     });
-    
-    test('should not throw an error if the number of tickets is an integer', () => {
-        expect(() => new TicketTypeRequest('ADULT', 1)).not.toThrow();
+
+    test('accepts valid type and positive integer count', () => {
+        expect(() => new TicketTypeRequest(TICKET_TYPES.ADULT, 1)).not.toThrow();
     });
-    
+
+    test('is immutable: properties cannot be changed', () => {
+        const req = new TicketTypeRequest(TICKET_TYPES.CHILD, 2);
+        expect(req.getTicketType()).toBe(TICKET_TYPES.CHILD);
+        expect(req.getNoOfTickets()).toBe(2);
+        expect(() => {
+            // @ts-ignore - attempting mutation
+            req.type = TICKET_TYPES.ADULT;
+        }).toThrow();
+        expect(req.getTicketType()).toBe(TICKET_TYPES.CHILD);
+    });
 });
 
