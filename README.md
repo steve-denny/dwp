@@ -200,4 +200,7 @@ ticketService.purchaseTickets(
 - Edge case validation
 - Error scenario testing
 
-![Image 11-09-2025 at 10 48](https://github.com/user-attachments/assets/00c19dd8-3018-493a-859f-7ae4bea21565)
+
+---
+
+<img width="781" height="521" alt="Screenshot 2025-09-11 at 22 43 08" src="https://github.com/user-attachments/assets/33d6d65e-a1d4-4058-b50f-153a40bfff33" />
