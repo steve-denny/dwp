@@ -18,8 +18,7 @@ describe('TicketTypeRequest', () => {
         const req = new TicketTypeRequest(TICKET_TYPES.CHILD, 2);
         expect(req.getTicketType()).toBe(TICKET_TYPES.CHILD);
         expect(req.getNoOfTickets()).toBe(2);
-        
-        // Attempting to assign to private field should not affect the object
+    
         // @ts-ignore - attempting mutation
         req.type = TICKET_TYPES.ADULT;
         // @ts-ignore - attempting mutation  

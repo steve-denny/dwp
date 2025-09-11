@@ -2,6 +2,8 @@ import TicketService from "../src/pairtest/TicketService.js";
 import TicketTypeRequest from "../src/pairtest/lib/TicketTypeRequest.js";
 import InvalidPurchaseException from "../src/pairtest/lib/InvalidPurchaseException.js";
 import { TICKET_PRICES, MAX_TICKET, TICKET_TYPES, ERROR_MESSAGES } from "../src/pairtest/constants/TicketConstants.js";
+import Logger from "../src/pairtest/infrastructure/Logger.js";
+import Config from "../src/pairtest/infrastructure/Config.js";  
 
 describe(`${TicketService.name}`, () => {
   let ticketService;
@@ -11,7 +13,12 @@ describe(`${TicketService.name}`, () => {
   beforeEach(() => {
     paymentService = { makePayment: jest.fn() };
     seatReservationService = { reserveSeat: jest.fn() };
-    ticketService = new TicketService(paymentService, seatReservationService);
+    ticketService = new TicketService(
+      paymentService,
+      seatReservationService,
+      new Logger(),
+      new Config()
+    );
   });
 
   describe("Account validation", () => {
@@ -91,11 +98,16 @@ describe(`${TicketService.name}`, () => {
       const expectedPayment = adult * TICKET_PRICES[TICKET_TYPES.ADULT] + child * TICKET_PRICES[TICKET_TYPES.CHILD];
       const expectedSeats = adult + child;
 
+      adultTicket = new TicketTypeRequest(TICKET_TYPES.ADULT, adult);
+      childTicket = new TicketTypeRequest(TICKET_TYPES.CHILD, child);
+      infantTicket = new TicketTypeRequest(TICKET_TYPES.INFANT, infant);
+
+  
       ticketService.purchaseTickets(
         accountId,
-        new TicketTypeRequest(TICKET_TYPES.ADULT, adult),
-        new TicketTypeRequest(TICKET_TYPES.CHILD, child),
-        new TicketTypeRequest(TICKET_TYPES.INFANT, infant)
+        adultTicket,
+        childTicket,
+        infantTicket
       );
 
       expect(paymentService.makePayment).toHaveBeenCalledTimes(1);
