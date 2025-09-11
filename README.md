@@ -19,22 +19,44 @@ This project implements a `TicketService` that handles cinema ticket purchases w
 cinema-tickets/
 ├── src/
 │   ├── pairtest/
-│   │   ├── TicketService.js              # Main service class
+│   │   ├── TicketService.js                         # Main service class
+│   │   ├── constants/
+│   │   │   └── TicketConstants.js                   # Business constants
+│   │   ├── infrastructure/
+│   │   │   ├── Config.js                            # Runtime configuration
+│   │   │   └── Logger.js                            # Pino-based logger
 │   │   ├── lib/
-│   │   │   ├── TicketTypeRequest.js      # Immutable ticket request
-│   │   │   └── InvalidPurchaseException.js # Custom exception
-│   │   └── constants/
-│   │       └── TicketConstants.js        # Business constants
+│   │   │   ├── InvalidPurchaseException.js          # Custom exception
+│   │   │   └── TicketTypeRequest.js                 # Immutable ticket request
+│   │   └── validation/
+│   │       ├── AccountValidationStrategy.js
+│   │       ├── TicketDependencyValidationStrategy.js
+│   │       ├── TicketQuantityValidationStrategy.js
+│   │       ├── TicketRequestValidationStrategy.js
+│   │       ├── ValidationContext.js
+│   │       ├── ValidationOrchestrator.js
+│   │       └── ValidationStrategy.js
 │   └── thirdparty/
 │       ├── paymentgateway/
-│       │   └── TicketPaymentService.js   # Payment service (external)
+│       │   └── TicketPaymentService.js              # Payment service (external)
 │       └── seatbooking/
-│           └── SeatReservationService.js # Seat service (external)
+│           └── SeatReservationService.js            # Seat service (external)
 ├── test/
-│   ├── TicketService.test.js             # Service tests
-│   └── TicketTypeRequest.test.js         # Request tests
+│   ├── infrastructure/
+│   │   ├── Config.test.js
+│   │   └── Logger.test.js
+│   ├── validation/
+│   │   ├── AccountValidationStrategy.test.js
+│   │   ├── TicketDependencyValidationStrategy.test.js
+│   │   ├── TicketQuantityValidationStrategy.test.js
+│   │   ├── TicketRequestValidationStrategy.test.js
+│   │   ├── ValidationOrchestrator.test.js
+│   │   └── ValidationStrategy.test.js
+│   ├── TicketService.test.js
+│   └── TicketTypeRequest.test.js
 ├── package.json
 ├── jest.config.js
+├── requirement.md
 └── README.md
 ```
 
@@ -70,7 +92,6 @@ npm test
 npm test -- --coverage
 ```
 
-
 ## 🏛️ Architecture
 
 ### Design Patterns
@@ -104,6 +125,39 @@ npm test -- --coverage
 - **Development Mode**: Pretty-printed logs in development
 - **Production Ready**: High-performance JSON logging
 
+### Validation
+
+- **ValidationStrategy**: Abstract base strategy with a `validate(context)` contract.
+- **ValidationOrchestrator**: Runs multiple strategies in order against a `ValidationContext`.
+- **ValidationContext**: Immutable snapshot passed to strategies, exposing:
+  - `getAccountId()`, `getTicketRequests()`, `getTotalTickets()`.
+- **Concrete strategies**:
+  - `AccountValidationStrategy`
+  - `TicketRequestValidationStrategy`
+  - `TicketQuantityValidationStrategy`
+  - `TicketDependencyValidationStrategy`
+
+Notes:
+- Strategies are orchestrated inside `TicketService` before payment and seat reservation.
+- For test compatibility, strategies can accept either a `ValidationContext` or raw inputs (arrays/numbers) when invoked directly.
+
+### Usage Example
+
+```js
+import TicketService from './src/pairtest/TicketService.js';
+import TicketTypeRequest from './src/pairtest/lib/TicketTypeRequest.js';
+import { TICKET_TYPES } from './src/pairtest/constants/TicketConstants.js';
+
+const ticketService = new TicketService();
+
+ticketService.purchaseTickets(
+  123,
+  new TicketTypeRequest(TICKET_TYPES.ADULT, 2),
+  new TicketTypeRequest(TICKET_TYPES.CHILD, 1),
+  new TicketTypeRequest(TICKET_TYPES.INFANT, 1)
+);
+```
+
 ## 🔧 Configuration
 
 ### Jest Configuration
@@ -115,6 +169,15 @@ npm test -- --coverage
 ### Babel Configuration
 - **Preset**: @babel/preset-env
 - **Target**: Node.js environment
+
+### Runtime Configuration (Environment Variables)
+
+- `LOG_LEVEL` (default: `info`) — Pino log level: `trace|debug|info|warn|error|fatal`.
+- `ADULT_TICKET_PRICE` (default: `25`)
+- `CHILD_TICKET_PRICE` (default: `15`)
+- `MAX_TICKETS_PER_PURCHASE` (default: `25`)
+- `NODE_ENV` (default: `development`) — toggles pretty logging in development.
+- `SERVICE_NAME` (default: `ticket-service`), `SERVICE_VERSION` (default: `1.0.0`)
 
 ## 📝 Business Rules
 

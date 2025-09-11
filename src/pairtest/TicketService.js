@@ -34,6 +34,7 @@ export default class TicketService {
    * 
    * @param {TicketPaymentService} [paymentService=new TicketPaymentService()] - Service for processing payments
    * @param {SeatReservationService} [seatReservationService=new SeatReservationService()] - Service for reserving seats
+   * @param {Logger} [logger=new Logger()] - Logger for logging
    * @param {Config} [config=new Config()] - Configuration manager
    */
   constructor(
@@ -60,6 +61,8 @@ export default class TicketService {
       environment: this.#config.getEnvironment()
     });
   }
+
+  
 
   /**
    * Purchases tickets for a given account with validation of business rules.
@@ -88,19 +91,7 @@ export default class TicketService {
 
     try {
       //request validation
-      if(!accountId) {
-        throw new InvalidPurchaseException(ERROR_MESSAGES.INVALID_ACCOUNT_ID);
-      }
-      if (
-        !ticketTypeRequests.every(
-          req => req && typeof req === 'object' && req.constructor && req.constructor.name === 'TicketTypeRequest'
-        )
-      ) {
-        throw new InvalidPurchaseException(ERROR_MESSAGES.INVALID_TICKET_TYPE_REQUEST);
-      }
-      if(!ticketTypeRequests ) {
-        throw new InvalidPurchaseException(ERROR_MESSAGES.INVALID_TICKET_TYPE_REQUEST);
-      }
+      this.#validateInput(accountId, ...ticketTypeRequests);
       const totalTickets = this.#calculateTotalTickets(ticketTypeRequests);
       
       // Create validation context with all data
@@ -173,6 +164,30 @@ export default class TicketService {
       const count = request.getNoOfTickets();
       return total + (ticketPrices[ticketType] * count);
     }, 0);
+  }
+  
+  /**
+   * Validates the input parameters.
+   * 
+   * @private
+   * @param {number} accountId - The account ID
+   * @param {...TicketTypeRequest} ticketTypeRequests - Variable number of ticket requests
+   * @throws {InvalidPurchaseException} When input is invalid
+   */
+  #validateInput(accountId, ...ticketTypeRequests) {
+    if(!accountId) {
+      throw new InvalidPurchaseException(ERROR_MESSAGES.INVALID_ACCOUNT_ID);
+    }
+    if (
+      !ticketTypeRequests.every(
+        req => req && typeof req === 'object' && req.constructor && req.constructor.name === 'TicketTypeRequest'
+      )
+    ) {
+      throw new InvalidPurchaseException(ERROR_MESSAGES.INVALID_TICKET_TYPE_REQUEST);
+    }
+    if(!ticketTypeRequests ) {
+      throw new InvalidPurchaseException(ERROR_MESSAGES.INVALID_TICKET_TYPE_REQUEST);
+    }
   }
 
   /**
