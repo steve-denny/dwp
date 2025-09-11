@@ -85,9 +85,9 @@ describe(`${TicketService.name}`, () => {
   describe("Payment calculation and seat reservation", () => {
     test("charges only for ADULT and CHILD and reserves seats excluding INFANT", () => {
       const accountId = 10;
-      const adult = 2;
-      const child = 3;
-      const infant = 4;
+      const adult = 3;
+      const child = 2;
+      const infant = 2; // infant <= adult (3)
       const expectedPayment = adult * TICKET_PRICES[TICKET_TYPES.ADULT] + child * TICKET_PRICES[TICKET_TYPES.CHILD];
       const expectedSeats = adult + child;
 
@@ -113,6 +113,15 @@ describe(`${TicketService.name}`, () => {
       );
 
       expect(seatReservationService.reserveSeat).toHaveBeenCalledWith(accountId, 1);
+    });
+
+    test("should processes payment before seat reservation", () => {
+      ticketService.purchaseTickets(1, new TicketTypeRequest(TICKET_TYPES.ADULT, 1));
+      expect(paymentService.makePayment).toHaveBeenCalled();
+      expect(seatReservationService.reserveSeat).toHaveBeenCalled();
+      expect(paymentService.makePayment.mock.invocationCallOrder[0]).toBeLessThan(
+        seatReservationService.reserveSeat.mock.invocationCallOrder[0]
+      );
     });
   });
 
