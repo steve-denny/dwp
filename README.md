@@ -76,9 +76,12 @@ npm test -- --coverage
 ### Design Patterns
 
 - **Dependency Injection**: Services injected via constructor
+- **Strategy Pattern**: Modular validation strategies with orchestrator
 - **Immutable Objects**: TicketTypeRequest cannot be modified
 - **Private Methods**: All validation logic is private
 - **Custom Exceptions**: Specific error types for different failures
+- **Structured Logging**: Pino-based logging with context support
+- **Configuration Management**: Environment-based configuration
 
 ### Key Classes
 
@@ -86,11 +89,20 @@ npm test -- --coverage
 - **Public API**: Only `purchaseTickets()` method
 - **Private Methods**: All validation and calculation logic
 - **Dependencies**: Payment and seat reservation services
+- **Logging**: Structured logging with Pino
+- **Configuration**: Environment-based configuration
 
 #### TicketTypeRequest
 - **Immutable**: Once created, cannot be modified
 - **Validation**: Type and quantity validation on construction
 - **Getters**: Access to type and quantity
+
+#### Logger (Pino-based)
+- **Structured Logging**: JSON-formatted logs with timestamps
+- **Context Support**: Child loggers with merged context
+- **Log Levels**: Trace, debug, info, warn, error, fatal
+- **Development Mode**: Pretty-printed logs in development
+- **Production Ready**: High-performance JSON logging
 
 ## 🔧 Configuration
 
@@ -125,3 +137,4 @@ npm test -- --coverage
 - Edge case validation
 - Error scenario testing
 
+![Image 11-09-2025 at 10 48](https://github.com/user-attachments/assets/00c19dd8-3018-493a-859f-7ae4bea21565)

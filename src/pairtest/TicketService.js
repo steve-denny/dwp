@@ -4,6 +4,16 @@ import { TICKET_TYPES, TICKET_PRICES, MAX_TICKET, ERROR_MESSAGES } from './const
 import TicketPaymentService from '../thirdparty/paymentgateway/TicketPaymentService.js';
 import SeatReservationService from '../thirdparty/seatbooking/SeatReservationService.js';
 
+// Import new infrastructure components
+import ValidationOrchestrator from './validation/ValidationOrchestrator.js';
+import ValidationContext from './validation/ValidationContext.js';
+import AccountValidationStrategy from './validation/AccountValidationStrategy.js';
+import TicketRequestValidationStrategy from './validation/TicketRequestValidationStrategy.js';
+import TicketQuantityValidationStrategy from './validation/TicketQuantityValidationStrategy.js';
+import TicketDependencyValidationStrategy from './validation/TicketDependencyValidationStrategy.js';
+import Logger from './infrastructure/Logger.js';
+import Config from './infrastructure/Config.js';
+
 /**
  * Service for purchasing cinema tickets with business rule validation.
  * 
@@ -15,16 +25,40 @@ import SeatReservationService from '../thirdparty/seatbooking/SeatReservationSer
 export default class TicketService {
   #paymentService;
   #seatReservationService;
+  #validationOrchestrator;
+  #logger;
+  #config;
 
   /**
    * Creates an instance of TicketService.
    * 
    * @param {TicketPaymentService} [paymentService=new TicketPaymentService()] - Service for processing payments
    * @param {SeatReservationService} [seatReservationService=new SeatReservationService()] - Service for reserving seats
+   * @param {Config} [config=new Config()] - Configuration manager
    */
-  constructor(paymentService = new TicketPaymentService(), seatReservationService = new SeatReservationService()) {
+  constructor(
+    paymentService = new TicketPaymentService(), 
+    seatReservationService = new SeatReservationService(),
+    logger = new Logger(),
+    config = new Config()
+  ) {
     this.#paymentService = paymentService;
     this.#seatReservationService = seatReservationService;
+    this.#logger = logger.child({ service: 'TicketService' });
+    this.#config = config;
+    
+    // Initialize validation orchestrator with strategies
+    this.#validationOrchestrator = new ValidationOrchestrator([
+      new AccountValidationStrategy(),
+      new TicketRequestValidationStrategy(),
+      new TicketQuantityValidationStrategy(),
+      new TicketDependencyValidationStrategy()
+    ]);
+
+    this.#logger.info('TicketService initialized', {
+      maxTickets: this.#config.getMaxTicketsPerPurchase(),
+      environment: this.#config.getEnvironment()
+    });
   }
 
   /**
@@ -50,50 +84,67 @@ export default class TicketService {
    * );
    */
   purchaseTickets(accountId, ...ticketTypeRequests) {
-    this.#validateAccountId(accountId);
-    this.#validateTicketRequests(ticketTypeRequests);
-    
-    const totalTickets = this.#calculateTotalTickets(ticketTypeRequests);
-    this.#validateTicketQuantity(totalTickets);
-    
-    this.#validateTicketDependencies(ticketTypeRequests);
-    
-    const totalAmount = this.#calculateTotalAmount(ticketTypeRequests);
-    const totalSeats = this.#calculateTotalSeats(ticketTypeRequests);
-    
-    this.#paymentService.makePayment(accountId, totalAmount);
-    this.#seatReservationService.reserveSeat(accountId, totalSeats);
-  }
+    const startTime = Date.now();
 
-  /**
-   * Validates that the account ID is a positive integer.
-   * 
-   * @private
-   * @param {number} accountId - The account ID to validate
-   * @throws {InvalidPurchaseException} When account ID is invalid
-   */
-  #validateAccountId(accountId) {
-    if (!Number.isInteger(accountId) || accountId <= 0) {
-      throw new InvalidPurchaseException(ERROR_MESSAGES.INVALID_ACCOUNT_ID);
-    }
-  }
-
-  /**
-   * Validates that ticket requests are provided and are valid TicketTypeRequest instances.
-   * 
-   * @private
-   * @param {TicketTypeRequest[]} ticketTypeRequests - Array of ticket requests to validate
-   * @throws {InvalidPurchaseException} When ticket requests are invalid
-   */
-  #validateTicketRequests(ticketTypeRequests) {
-    if (!ticketTypeRequests || ticketTypeRequests.length === 0) {
-      throw new InvalidPurchaseException(ERROR_MESSAGES.INVALID_TICKET_TYPE_REQUEST);
-    }
-    
-    for (const request of ticketTypeRequests) {
-      if (!(request instanceof TicketTypeRequest)) {
+    try {
+      //request validation
+      if(!accountId) {
+        throw new InvalidPurchaseException(ERROR_MESSAGES.INVALID_ACCOUNT_ID);
+      }
+      if (
+        !ticketTypeRequests.every(
+          req => req && typeof req === 'object' && req.constructor && req.constructor.name === 'TicketTypeRequest'
+        )
+      ) {
         throw new InvalidPurchaseException(ERROR_MESSAGES.INVALID_TICKET_TYPE_REQUEST);
       }
+      if(!ticketTypeRequests ) {
+        throw new InvalidPurchaseException(ERROR_MESSAGES.INVALID_TICKET_TYPE_REQUEST);
+      }
+      const totalTickets = this.#calculateTotalTickets(ticketTypeRequests);
+      
+      // Create validation context with all data
+      const validationContext = new ValidationContext(accountId, ticketTypeRequests, totalTickets);
+      
+      // Validate all business rules using the context
+      this.#validationOrchestrator.validate(validationContext);
+      
+      this.#logger.info('Ticket purchase initiated', {
+        accountId,
+        ticketCount: ticketTypeRequests.length,
+        ticketTypes: ticketTypeRequests.map(req => req.getTicketType())
+      });
+      
+      const totalAmount = this.#calculateTotalAmount(ticketTypeRequests);
+      const totalSeats = this.#calculateTotalSeats(ticketTypeRequests);
+      
+      // Process payment and seat reservation
+      this.#paymentService.makePayment(accountId, totalAmount);
+      this.#seatReservationService.reserveSeat(accountId, totalSeats);
+
+      // This is  a metric, but we are not using it for now
+      const duration = Date.now() - startTime;
+    
+      
+      this.#logger.info('Ticket purchase completed successfully', {
+        accountId,
+        totalAmount,
+        totalSeats,
+        totalTickets,
+        duration
+      });
+      
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      
+      this.#logger.error('Ticket purchase failed', {
+        accountId,
+        error: error.message,
+        errorType: error.constructor.name,
+        duration
+      });
+      
+      throw error;
     }
   }
 
@@ -109,56 +160,6 @@ export default class TicketService {
   }
 
   /**
-   * Validates that the total ticket quantity doesn't exceed the maximum allowed.
-   * 
-   * @private
-   * @param {number} totalTickets - Total number of tickets to validate
-   * @throws {InvalidPurchaseException} When ticket quantity exceeds maximum
-   */
-  #validateTicketQuantity(totalTickets) {
-    if (totalTickets > MAX_TICKET) {
-      throw new InvalidPurchaseException(ERROR_MESSAGES.MAX_TICKETS(MAX_TICKET));
-    }
-  }
-
-  /**
-   * Validates ticket dependency rules (Child/Infant require Adult, Infant ≤ Adult).
-   * 
-   * @private
-   * @param {TicketTypeRequest[]} ticketTypeRequests - Array of ticket requests
-   * @throws {InvalidPurchaseException} When dependency rules are violated
-   */
-  #validateTicketDependencies(ticketTypeRequests) {
-    const adultCount = this.#getTicketCount(ticketTypeRequests, TICKET_TYPES.ADULT);
-    const childCount = this.#getTicketCount(ticketTypeRequests, TICKET_TYPES.CHILD);
-    const infantCount = this.#getTicketCount(ticketTypeRequests, TICKET_TYPES.INFANT);
-    
-    // Child and Infant tickets cannot be purchased without Adult tickets
-    if ((childCount > 0 || infantCount > 0) && adultCount === 0) {
-      throw new InvalidPurchaseException(ERROR_MESSAGES.CHILD_INFANT_WITHOUT_ADULT);
-    }
-    
-    // Number of infant tickets must be less than or equal to adult tickets
-    if (infantCount > adultCount) {
-      throw new InvalidPurchaseException(ERROR_MESSAGES.INFANT_TICKET_LIMIT);
-    }
-  }
-
-  /**
-   * Gets the total count of a specific ticket type from the requests.
-   * 
-   * @private
-   * @param {TicketTypeRequest[]} ticketTypeRequests - Array of ticket requests
-   * @param {string} ticketType - The ticket type to count
-   * @returns {number} Total count of the specified ticket type
-   */
-  #getTicketCount(ticketTypeRequests, ticketType) {
-    return ticketTypeRequests
-      .filter(request => request.getTicketType() === ticketType)
-      .reduce((total, request) => total + request.getNoOfTickets(), 0);
-  }
-
-  /**
    * Calculates the total amount to be paid (excludes infant tickets which are free).
    * 
    * @private
@@ -166,10 +167,11 @@ export default class TicketService {
    * @returns {number} Total amount to be paid
    */
   #calculateTotalAmount(ticketTypeRequests) {
+    const ticketPrices = this.#config.getTicketPrices();
     return ticketTypeRequests.reduce((total, request) => {
       const ticketType = request.getTicketType();
       const count = request.getNoOfTickets();
-      return total + (TICKET_PRICES[ticketType] * count);
+      return total + (ticketPrices[ticketType] * count);
     }, 0);
   }
 
