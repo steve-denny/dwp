@@ -9,6 +9,7 @@ public class TicketServiceImpl implements TicketService {
 
     private static final int ADULT_TICKET_PRICE = 25;
     private static final int CHILD_TICKET_PRICE = 15;
+    private static final int INFANT_TICKET_PRICE = 0;
 
     private final TicketPaymentService ticketPaymentService;
     private final SeatReservationService seatReservationService;
@@ -37,7 +38,7 @@ public class TicketServiceImpl implements TicketService {
                     totalAmountToPay += request.getNoOfTickets() * CHILD_TICKET_PRICE;
                     break;
                 case INFANT:
-                    // Infants do not cost money or take up a seat, so no action is needed here yet.
+                    totalAmountToPay += request.getNoOfTickets() * INFANT_TICKET_PRICE;
                     break;
             }
         }

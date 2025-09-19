@@ -64,5 +64,19 @@ final class TicketServiceImplTest {
         verify(seatReservationService).reserveSeat(accountId, 5);
         verify(ticketPaymentService).makePayment(accountId, 95);
     }
+
+    @Test
+    @DisplayName("Should process adult, child, and infant tickets")
+    void shouldProcessAllTicketTypes() {
+        final long accountId = 4L;
+        final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 2);
+        final TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 1);
+        final TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 2);
+
+        ticketService.purchaseTickets(accountId, adultRequest, childRequest, infantRequest);
+
+        verify(seatReservationService).reserveSeat(accountId, 3);
+        verify(ticketPaymentService).makePayment(accountId, 65);
+    }
 }
 
