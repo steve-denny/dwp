@@ -31,13 +31,28 @@ final class TicketServiceImplTest {
     @Test
     @DisplayName("Should process a single adult ticket purchase")
     void shouldProcessSingleAdultTicket() {
+        // Arrange
         final long accountId = 1L;
         final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 1);
 
+        // Act
         ticketService.purchaseTickets(accountId, adultRequest);
 
+        // Assert
         verify(seatReservationService).reserveSeat(accountId, 1);
         verify(ticketPaymentService).makePayment(accountId, 20);
+    }
+
+    @Test
+    @DisplayName("Should process multiple adult tickets")
+    void shouldProcessMultipleAdultTickets() {
+        final long accountId = 2L;
+        final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 5);
+
+        ticketService.purchaseTickets(accountId, adultRequest);
+
+        verify(seatReservationService).reserveSeat(accountId, 5);
+        verify(ticketPaymentService).makePayment(accountId, 100);
     }
 }
 

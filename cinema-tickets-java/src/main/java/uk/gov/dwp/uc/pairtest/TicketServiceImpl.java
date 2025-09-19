@@ -20,9 +20,18 @@ public class TicketServiceImpl implements TicketService {
     public void purchaseTickets(final Long accountId, final TicketTypeRequest... ticketTypeRequests)
             throws InvalidPurchaseException {
 
-        // The simplest implementation to make the first test pass.
-        seatReservationService.reserveSeat(accountId, 1);
-        ticketPaymentService.makePayment(accountId, 20);
+        int totalSeatsToAllocate = 0;
+        int totalAmountToPay = 0;
+
+        for (final TicketTypeRequest request : ticketTypeRequests) {
+            if (request.getTicketType() == TicketTypeRequest.Type.ADULT) {
+                totalSeatsToAllocate += request.getNoOfTickets();
+                totalAmountToPay += request.getNoOfTickets() * 20;
+            }
+        }
+
+        seatReservationService.reserveSeat(accountId, totalSeatsToAllocate);
+        ticketPaymentService.makePayment(accountId, totalAmountToPay);
     }
 }
 
