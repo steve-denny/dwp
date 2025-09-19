@@ -18,6 +18,7 @@ public class TicketServiceImpl implements TicketService {
     private final TicketPaymentService ticketPaymentService;
     private final SeatReservationService seatReservationService;
 
+    // This is dependency injection it makes tests far cleaner
     public TicketServiceImpl(TicketPaymentService ticketPaymentService,
                              SeatReservationService seatReservationService) {
         this.ticketPaymentService = ticketPaymentService;
@@ -106,6 +107,7 @@ public class TicketServiceImpl implements TicketService {
         int totalAmount = 0;
         totalAmount += ticketCounts.getOrDefault(TicketTypeRequest.Type.ADULT, 0) * ADULT_TICKET_PRICE;
         totalAmount += ticketCounts.getOrDefault(TicketTypeRequest.Type.CHILD, 0) * CHILD_TICKET_PRICE;
+        // Needed as infant amounts might change in the future
         totalAmount += ticketCounts.getOrDefault(TicketTypeRequest.Type.INFANT, 0) * INFANT_TICKET_PRICE;
         return totalAmount;
     }

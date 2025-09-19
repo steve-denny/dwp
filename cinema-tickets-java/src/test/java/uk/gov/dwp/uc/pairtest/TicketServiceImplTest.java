@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import thirdparty.paymentgateway.TicketPaymentService;
@@ -13,6 +14,7 @@ import uk.gov.dwp.uc.pairtest.domain.TicketTypeRequest;
 import uk.gov.dwp.uc.pairtest.exception.InvalidPurchaseException;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -25,7 +27,7 @@ final class TicketServiceImplTest {
     @Mock
     private SeatReservationService seatReservationService;
 
-    private TicketService ticketService;
+    private TicketServiceImpl ticketService;
 
     @BeforeEach
     void setUp() {
@@ -269,6 +271,49 @@ final class TicketServiceImplTest {
             assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(1L, adultRequest, infantRequest));
 
             verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
+    }
+
+    @Nested
+    @DisplayName("Service Integration Tests")
+    class ServiceIntegrationTests {
+
+        @Test
+        @DisplayName("Should call services in the correct order")
+        void shouldCallServicesInCorrectOrder() {
+            final long accountId = 10L;
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 2);
+
+            ticketService.purchaseTickets(accountId, adultRequest);
+
+            final InOrder inOrder = inOrder(seatReservationService, ticketPaymentService);
+            inOrder.verify(seatReservationService).reserveSeat(accountId, 2);
+            inOrder.verify(ticketPaymentService).makePayment(accountId, 50);
+        }
+
+        @Test
+        @DisplayName("Should calculate the correct payment for mixed ticket types")
+        void shouldCalculateCorrectPaymentForMixedTypes() {
+            final long accountId = 11L;
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 3);
+            final TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 2);
+            final TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 1);
+
+            ticketService.purchaseTickets(accountId, adultRequest, childRequest, infantRequest);
+
+            verify(ticketPaymentService).makePayment(accountId, 105);
+        }
+
+        @Test
+        @DisplayName("Should not reserve seats for infants")
+        void shouldNotReserveSeatsForInfants() {
+            final long accountId = 12L;
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 2);
+            final TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 2);
+
+            ticketService.purchaseTickets(accountId, adultRequest, infantRequest);
+
+            verify(seatReservationService).reserveSeat(accountId, 2);
         }
     }
 }
