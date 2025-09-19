@@ -2,6 +2,7 @@ package uk.gov.dwp.uc.pairtest;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -9,8 +10,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import thirdparty.paymentgateway.TicketPaymentService;
 import thirdparty.seatbooking.SeatReservationService;
 import uk.gov.dwp.uc.pairtest.domain.TicketTypeRequest;
+import uk.gov.dwp.uc.pairtest.exception.InvalidPurchaseException;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 final class TicketServiceImplTest {
@@ -28,55 +32,95 @@ final class TicketServiceImplTest {
         ticketService = new TicketServiceImpl(ticketPaymentService, seatReservationService);
     }
 
-    @Test
-    @DisplayName("Should process a single adult ticket purchase")
-    void shouldProcessSingleAdultTicket() {
-        final long accountId = 1L;
-        final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 1);
+    @Nested
+    @DisplayName("Valid Purchase Scenarios")
+    class ValidPurchaseTests {
 
-        ticketService.purchaseTickets(accountId, adultRequest);
+        @Test
+        @DisplayName("Should process a single adult ticket purchase")
+        void shouldProcessSingleAdultTicket() {
+            final long accountId = 1L;
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 1);
 
-        verify(seatReservationService).reserveSeat(accountId, 1);
-        verify(ticketPaymentService).makePayment(accountId, 25);
+            ticketService.purchaseTickets(accountId, adultRequest);
+
+            verify(seatReservationService).reserveSeat(accountId, 1);
+            verify(ticketPaymentService).makePayment(accountId, 25);
+        }
+
+        @Test
+        @DisplayName("Should process multiple adult tickets")
+        void shouldProcessMultipleAdultTickets() {
+            final long accountId = 2L;
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 5);
+
+            ticketService.purchaseTickets(accountId, adultRequest);
+
+            verify(seatReservationService).reserveSeat(accountId, 5);
+            verify(ticketPaymentService).makePayment(accountId, 125);
+        }
+
+        @Test
+        @DisplayName("Should process adult and child tickets")
+        void shouldProcessAdultAndChildTickets() {
+            final long accountId = 3L;
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 2);
+            final TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 3);
+
+            ticketService.purchaseTickets(accountId, adultRequest, childRequest);
+
+            verify(seatReservationService).reserveSeat(accountId, 5);
+            verify(ticketPaymentService).makePayment(accountId, 95);
+        }
+
+        @Test
+        @DisplayName("Should process adult, child, and infant tickets")
+        void shouldProcessAllTicketTypes() {
+            final long accountId = 4L;
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 2);
+            final TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 1);
+            final TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 2);
+
+            ticketService.purchaseTickets(accountId, adultRequest, childRequest, infantRequest);
+
+            verify(seatReservationService).reserveSeat(accountId, 3);
+            verify(ticketPaymentService).makePayment(accountId, 65);
+        }
     }
 
-    @Test
-    @DisplayName("Should process multiple adult tickets")
-    void shouldProcessMultipleAdultTickets() {
-        final long accountId = 2L;
-        final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 5);
+    @Nested
+    @DisplayName("Invalid Purchase Scenarios")
+    class InvalidPurchaseTests {
 
-        ticketService.purchaseTickets(accountId, adultRequest);
+        @Test
+        @DisplayName("Should reject a null account ID")
+        void shouldRejectNullAccountId() {
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 1);
 
-        verify(seatReservationService).reserveSeat(accountId, 5);
-        verify(ticketPaymentService).makePayment(accountId, 125);
-    }
+            assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(null, adultRequest));
 
-    @Test
-    @DisplayName("Should process adult and child tickets")
-    void shouldProcessAdultAndChildTickets() {
-        final long accountId = 3L;
-        final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 2);
-        final TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 3);
+            verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
 
-        ticketService.purchaseTickets(accountId, adultRequest, childRequest);
+        @Test
+        @DisplayName("Should reject a zero account ID")
+        void shouldRejectZeroAccountId() {
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 1);
 
-        verify(seatReservationService).reserveSeat(accountId, 5);
-        verify(ticketPaymentService).makePayment(accountId, 95);
-    }
+            assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(0L, adultRequest));
 
-    @Test
-    @DisplayName("Should process adult, child, and infant tickets")
-    void shouldProcessAllTicketTypes() {
-        final long accountId = 4L;
-        final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 2);
-        final TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 1);
-        final TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 2);
+            verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
 
-        ticketService.purchaseTickets(accountId, adultRequest, childRequest, infantRequest);
+        @Test
+        @DisplayName("Should reject a negative account ID")
+        void shouldRejectNegativeAccountId() {
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 1);
 
-        verify(seatReservationService).reserveSeat(accountId, 3);
-        verify(ticketPaymentService).makePayment(accountId, 65);
+            assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(-1L, adultRequest));
+
+            verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
     }
 }
 

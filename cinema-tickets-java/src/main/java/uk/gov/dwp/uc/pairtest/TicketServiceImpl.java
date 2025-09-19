@@ -24,27 +24,47 @@ public class TicketServiceImpl implements TicketService {
     public void purchaseTickets(final Long accountId, final TicketTypeRequest... ticketTypeRequests)
             throws InvalidPurchaseException {
 
-        int totalSeatsToAllocate = 0;
-        int totalAmountToPay = 0;
+        validateAccountId(accountId);
 
-        for (final TicketTypeRequest request : ticketTypeRequests) {
-            switch (request.getTicketType()) {
-                case ADULT:
-                    totalSeatsToAllocate += request.getNoOfTickets();
-                    totalAmountToPay += request.getNoOfTickets() * ADULT_TICKET_PRICE;
-                    break;
-                case CHILD:
-                    totalSeatsToAllocate += request.getNoOfTickets();
-                    totalAmountToPay += request.getNoOfTickets() * CHILD_TICKET_PRICE;
-                    break;
-                case INFANT:
-                    totalAmountToPay += request.getNoOfTickets() * INFANT_TICKET_PRICE;
-                    break;
-            }
-        }
+        final int totalAmountToPay = calculateTotalAmount(ticketTypeRequests);
+        final int totalSeatsToAllocate = calculateTotalSeats(ticketTypeRequests);
 
         seatReservationService.reserveSeat(accountId, totalSeatsToAllocate);
         ticketPaymentService.makePayment(accountId, totalAmountToPay);
+    }
+
+    private void validateAccountId(final Long accountId) {
+        if (accountId == null || accountId <= 0) {
+            throw new InvalidPurchaseException();
+        }
+    }
+
+    private int calculateTotalAmount(final TicketTypeRequest... ticketTypeRequests) {
+        int totalAmount = 0;
+        for (final TicketTypeRequest request : ticketTypeRequests) {
+            switch (request.getTicketType()) {
+                case ADULT:
+                    totalAmount += request.getNoOfTickets() * ADULT_TICKET_PRICE;
+                    break;
+                case CHILD:
+                    totalAmount += request.getNoOfTickets() * CHILD_TICKET_PRICE;
+                    break;
+                case INFANT:
+                    totalAmount += request.getNoOfTickets() * INFANT_TICKET_PRICE;
+                    break;
+            }
+        }
+        return totalAmount;
+    }
+
+    private int calculateTotalSeats(final TicketTypeRequest... ticketTypeRequests) {
+        int totalSeats = 0;
+        for (final TicketTypeRequest request : ticketTypeRequests) {
+            if (request.getTicketType() == TicketTypeRequest.Type.ADULT || request.getTicketType() == TicketTypeRequest.Type.CHILD) {
+                totalSeats += request.getNoOfTickets();
+            }
+        }
+        return totalSeats;
     }
 }
 
