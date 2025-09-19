@@ -5,6 +5,9 @@ import thirdparty.seatbooking.SeatReservationService;
 import uk.gov.dwp.uc.pairtest.domain.TicketTypeRequest;
 import uk.gov.dwp.uc.pairtest.exception.InvalidPurchaseException;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class TicketServiceImpl implements TicketService {
 
     private static final int ADULT_TICKET_PRICE = 25;
@@ -25,12 +28,15 @@ public class TicketServiceImpl implements TicketService {
             throws InvalidPurchaseException {
 
         validateAccountId(accountId);
+        validateTicketRequests(ticketTypeRequests);
 
-        final int totalAmountToPay = calculateTotalAmount(ticketTypeRequests);
-        final int totalSeatsToAllocate = calculateTotalSeats(ticketTypeRequests);
+        final Map<TicketTypeRequest.Type, Integer> ticketCounts = aggregateTicketCounts(ticketTypeRequests);
 
-        seatReservationService.reserveSeat(accountId, totalSeatsToAllocate);
-        ticketPaymentService.makePayment(accountId, totalAmountToPay);
+        final int totalAmount = calculateTotalAmount(ticketCounts);
+        final int totalSeats = calculateTotalSeats(ticketCounts);
+
+        seatReservationService.reserveSeat(accountId, totalSeats);
+        ticketPaymentService.makePayment(accountId, totalAmount);
     }
 
     private void validateAccountId(final Long accountId) {
@@ -39,31 +45,46 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    private int calculateTotalAmount(final TicketTypeRequest... ticketTypeRequests) {
-        int totalAmount = 0;
+    private void validateTicketRequests(final TicketTypeRequest... ticketTypeRequests) {
+        if (ticketTypeRequests == null || ticketTypeRequests.length == 0) {
+            throw new InvalidPurchaseException();
+        }
+
         for (final TicketTypeRequest request : ticketTypeRequests) {
-            switch (request.getTicketType()) {
-                case ADULT:
-                    totalAmount += request.getNoOfTickets() * ADULT_TICKET_PRICE;
-                    break;
-                case CHILD:
-                    totalAmount += request.getNoOfTickets() * CHILD_TICKET_PRICE;
-                    break;
-                case INFANT:
-                    totalAmount += request.getNoOfTickets() * INFANT_TICKET_PRICE;
-                    break;
+            if (request == null) {
+                throw new InvalidPurchaseException();
+            }
+            if (request.getNoOfTickets() < 0) {
+                throw new InvalidPurchaseException();
             }
         }
+    }
+
+    private Map<TicketTypeRequest.Type, Integer> aggregateTicketCounts(
+            final TicketTypeRequest... ticketTypeRequests) {
+        final Map<TicketTypeRequest.Type, Integer> ticketCounts = new HashMap<>();
+
+        for (final TicketTypeRequest request : ticketTypeRequests) {
+            ticketCounts.merge(request.getTicketType(),
+                    request.getNoOfTickets(),
+                    Integer::sum);
+        }
+
+        return ticketCounts;
+    }
+
+    private int calculateTotalAmount(final Map<TicketTypeRequest.Type, Integer> ticketCounts) {
+        int totalAmount = 0;
+        totalAmount += ticketCounts.getOrDefault(TicketTypeRequest.Type.ADULT, 0) * ADULT_TICKET_PRICE;
+        totalAmount += ticketCounts.getOrDefault(TicketTypeRequest.Type.CHILD, 0) * CHILD_TICKET_PRICE;
+        totalAmount += ticketCounts.getOrDefault(TicketTypeRequest.Type.INFANT, 0) * INFANT_TICKET_PRICE;
         return totalAmount;
     }
 
-    private int calculateTotalSeats(final TicketTypeRequest... ticketTypeRequests) {
+    private int calculateTotalSeats(final Map<TicketTypeRequest.Type, Integer> ticketCounts) {
         int totalSeats = 0;
-        for (final TicketTypeRequest request : ticketTypeRequests) {
-            if (request.getTicketType() == TicketTypeRequest.Type.ADULT || request.getTicketType() == TicketTypeRequest.Type.CHILD) {
-                totalSeats += request.getNoOfTickets();
-            }
-        }
+        totalSeats += ticketCounts.getOrDefault(TicketTypeRequest.Type.ADULT, 0);
+        totalSeats += ticketCounts.getOrDefault(TicketTypeRequest.Type.CHILD, 0);
         return totalSeats;
     }
 }

@@ -86,6 +86,21 @@ final class TicketServiceImplTest {
             verify(seatReservationService).reserveSeat(accountId, 3);
             verify(ticketPaymentService).makePayment(accountId, 65);
         }
+
+        @Test
+        @DisplayName("Should aggregate multiple requests of the same type")
+        void shouldAggregateMultipleRequestsOfSameType() {
+            final long accountId = 6L;
+            final TicketTypeRequest adultRequest1 = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 2);
+            final TicketTypeRequest adultRequest2 = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 3);
+            final TicketTypeRequest childRequest1 = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 1);
+            final TicketTypeRequest childRequest2 = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 2);
+
+            ticketService.purchaseTickets(accountId, adultRequest1, adultRequest2, childRequest1, childRequest2);
+
+            verify(seatReservationService).reserveSeat(accountId, 8);
+            verify(ticketPaymentService).makePayment(accountId, 170);
+        }
     }
 
     @Nested
@@ -118,6 +133,42 @@ final class TicketServiceImplTest {
             final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 1);
 
             assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(-1L, adultRequest));
+
+            verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
+
+        @Test
+        @DisplayName("Should reject null ticket requests")
+        void shouldRejectNullTicketRequests() {
+            assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(1L, (TicketTypeRequest[]) null));
+
+            verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
+
+        @Test
+        @DisplayName("Should reject empty ticket requests")
+        void shouldRejectEmptyTicketRequests() {
+            assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(1L));
+
+            verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
+
+        @Test
+        @DisplayName("Should reject a null ticket request within the array")
+        void shouldRejectNullTicketRequestInArray() {
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 1);
+
+            assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(1L, adultRequest, null));
+
+            verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
+
+        @Test
+        @DisplayName("Should reject a negative ticket count")
+        void shouldRejectNegativeTicketCount() {
+            final TicketTypeRequest negativeRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, -1);
+
+            assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(1L, negativeRequest));
 
             verifyNoInteractions(ticketPaymentService, seatReservationService);
         }
