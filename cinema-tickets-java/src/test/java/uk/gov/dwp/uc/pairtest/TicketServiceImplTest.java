@@ -113,6 +113,19 @@ final class TicketServiceImplTest {
             verify(seatReservationService).reserveSeat(accountId, 8);
             verify(ticketPaymentService).makePayment(accountId, 170);
         }
+
+        @Test
+        @DisplayName("Should allow an equal number of infants and adults")
+        void shouldAllowEqualInfantsAndAdults() {
+            final long accountId = 7L;
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 3);
+            final TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 3);
+
+            ticketService.purchaseTickets(accountId, adultRequest, infantRequest);
+
+            verify(seatReservationService).reserveSeat(accountId, 3);
+            verify(ticketPaymentService).makePayment(accountId, 75);
+        }
     }
 
     @Nested
@@ -212,6 +225,48 @@ final class TicketServiceImplTest {
             final TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 6);
 
             assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(1L, adultRequest, childRequest));
+
+            verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
+
+        @Test
+        @DisplayName("Should reject child tickets without an adult")
+        void shouldRejectChildTicketsWithoutAdult() {
+            final TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 2);
+
+            assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(1L, childRequest));
+
+            verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
+
+        @Test
+        @DisplayName("Should reject infant tickets without an adult")
+        void shouldRejectInfantTicketsWithoutAdult() {
+            final TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 1);
+
+            assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(1L, infantRequest));
+
+            verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
+
+        @Test
+        @DisplayName("Should reject child and infant tickets without an adult")
+        void shouldRejectChildAndInfantTicketsWithoutAdult() {
+            final TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 2);
+            final TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 1);
+
+            assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(1L, childRequest, infantRequest));
+
+            verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
+
+        @Test
+        @DisplayName("Should reject more infants than adults")
+        void shouldRejectMoreInfantsThanAdults() {
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 2);
+            final TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 3);
+
+            assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(1L, adultRequest, infantRequest));
 
             verifyNoInteractions(ticketPaymentService, seatReservationService);
         }

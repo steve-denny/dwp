@@ -88,6 +88,18 @@ public class TicketServiceImpl implements TicketService {
         if (totalTickets > MAX_TICKETS_PER_PURCHASE) {
             throw new InvalidPurchaseException();
         }
+
+        final int adultTickets = ticketCounts.getOrDefault(TicketTypeRequest.Type.ADULT, 0);
+        final int childTickets = ticketCounts.getOrDefault(TicketTypeRequest.Type.CHILD, 0);
+        final int infantTickets = ticketCounts.getOrDefault(TicketTypeRequest.Type.INFANT, 0);
+
+        if ((childTickets > 0 || infantTickets > 0) && adultTickets == 0) {
+            throw new InvalidPurchaseException();
+        }
+
+        if (infantTickets > adultTickets) {
+            throw new InvalidPurchaseException();
+        }
     }
 
     private int calculateTotalAmount(final Map<TicketTypeRequest.Type, Integer> ticketCounts) {
