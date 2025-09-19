@@ -7,6 +7,9 @@ import uk.gov.dwp.uc.pairtest.exception.InvalidPurchaseException;
 
 public class TicketServiceImpl implements TicketService {
 
+    private static final int ADULT_TICKET_PRICE = 25;
+    private static final int CHILD_TICKET_PRICE = 15;
+
     private final TicketPaymentService ticketPaymentService;
     private final SeatReservationService seatReservationService;
 
@@ -24,9 +27,18 @@ public class TicketServiceImpl implements TicketService {
         int totalAmountToPay = 0;
 
         for (final TicketTypeRequest request : ticketTypeRequests) {
-            if (request.getTicketType() == TicketTypeRequest.Type.ADULT) {
-                totalSeatsToAllocate += request.getNoOfTickets();
-                totalAmountToPay += request.getNoOfTickets() * 20;
+            switch (request.getTicketType()) {
+                case ADULT:
+                    totalSeatsToAllocate += request.getNoOfTickets();
+                    totalAmountToPay += request.getNoOfTickets() * ADULT_TICKET_PRICE;
+                    break;
+                case CHILD:
+                    totalSeatsToAllocate += request.getNoOfTickets();
+                    totalAmountToPay += request.getNoOfTickets() * CHILD_TICKET_PRICE;
+                    break;
+                case INFANT:
+                    // Infants do not cost money or take up a seat, so no action is needed here yet.
+                    break;
             }
         }
 
