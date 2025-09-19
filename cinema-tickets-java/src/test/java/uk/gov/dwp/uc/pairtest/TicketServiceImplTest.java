@@ -88,6 +88,18 @@ final class TicketServiceImplTest {
         }
 
         @Test
+        @DisplayName("Should handle the maximum number of allowed tickets")
+        void shouldHandleMaximumTickets() {
+            final long accountId = 5L;
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 25);
+
+            ticketService.purchaseTickets(accountId, adultRequest);
+
+            verify(seatReservationService).reserveSeat(accountId, 25);
+            verify(ticketPaymentService).makePayment(accountId, 625);
+        }
+
+        @Test
         @DisplayName("Should aggregate multiple requests of the same type")
         void shouldAggregateMultipleRequestsOfSameType() {
             final long accountId = 6L;
@@ -169,6 +181,37 @@ final class TicketServiceImplTest {
             final TicketTypeRequest negativeRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, -1);
 
             assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(1L, negativeRequest));
+
+            verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
+
+        @Test
+        @DisplayName("Should reject a purchase of zero tickets")
+        void shouldRejectZeroTickets() {
+            final TicketTypeRequest zeroRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 0);
+
+            assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(1L, zeroRequest));
+
+            verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
+
+        @Test
+        @DisplayName("Should reject more than 25 tickets")
+        void shouldRejectMoreThanMaximumTickets() {
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 26);
+
+            assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(1L, adultRequest));
+
+            verifyNoInteractions(ticketPaymentService, seatReservationService);
+        }
+
+        @Test
+        @DisplayName("Should reject combined tickets exceeding the maximum")
+        void shouldRejectCombinedTicketsExceedingMaximum() {
+            final TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 20);
+            final TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 6);
+
+            assertThrows(InvalidPurchaseException.class, () -> ticketService.purchaseTickets(1L, adultRequest, childRequest));
 
             verifyNoInteractions(ticketPaymentService, seatReservationService);
         }

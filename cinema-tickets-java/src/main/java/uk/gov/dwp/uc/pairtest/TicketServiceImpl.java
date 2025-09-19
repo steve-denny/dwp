@@ -10,6 +10,7 @@ import java.util.Map;
 
 public class TicketServiceImpl implements TicketService {
 
+    private static final int MAX_TICKETS_PER_PURCHASE = 25;
     private static final int ADULT_TICKET_PRICE = 25;
     private static final int CHILD_TICKET_PRICE = 15;
     private static final int INFANT_TICKET_PRICE = 0;
@@ -31,6 +32,8 @@ public class TicketServiceImpl implements TicketService {
         validateTicketRequests(ticketTypeRequests);
 
         final Map<TicketTypeRequest.Type, Integer> ticketCounts = aggregateTicketCounts(ticketTypeRequests);
+
+        validateBusinessRules(ticketCounts);
 
         final int totalAmount = calculateTotalAmount(ticketCounts);
         final int totalSeats = calculateTotalSeats(ticketCounts);
@@ -71,6 +74,20 @@ public class TicketServiceImpl implements TicketService {
         }
 
         return ticketCounts;
+    }
+
+    private void validateBusinessRules(final Map<TicketTypeRequest.Type, Integer> ticketCounts) {
+        final int totalTickets = ticketCounts.values().stream()
+                .mapToInt(Integer::intValue)
+                .sum();
+
+        if (totalTickets == 0) {
+            throw new InvalidPurchaseException();
+        }
+
+        if (totalTickets > MAX_TICKETS_PER_PURCHASE) {
+            throw new InvalidPurchaseException();
+        }
     }
 
     private int calculateTotalAmount(final Map<TicketTypeRequest.Type, Integer> ticketCounts) {
