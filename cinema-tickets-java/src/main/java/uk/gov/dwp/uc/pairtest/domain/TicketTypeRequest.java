@@ -6,8 +6,8 @@ package uk.gov.dwp.uc.pairtest.domain;
 
 public class TicketTypeRequest {
 
-    private int noOfTickets;
-    private Type type;
+    private final int noOfTickets; // immutable
+    private final Type type; // immutable
 
     public TicketTypeRequest(Type type, int noOfTickets) {
         this.type = type;
